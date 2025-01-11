@@ -1,2 +1,6 @@
 [server]
 runOnSave = true
+
+[theme]
+base="dark"
+primaryColor = "#FCAD26"
