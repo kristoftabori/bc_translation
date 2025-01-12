@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    working_dir: /app
     volumes:
       - .:/app
       - ./pyproject.toml:/app/pyproject.toml:ro
@@ -12,3 +13,4 @@ services:
       - "8501:8501"
     environment:
       - STREAMLIT_SERVER_RUN_ON_SAVE=true
+      - PYTHONPATH=/app
