@@ -3,3 +3,7 @@ __pycache__
 *.pyo
 *.log
 *.env
+tests/
+notebooks/
+*.csv
+README.md
