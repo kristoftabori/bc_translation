@@ -5,7 +5,9 @@ SafeTranslate is a Streamlit-based application that translates text or CSV files
 ## Features
 - **Interactive Translation:** Translate individual strings to multiple languages with placeholders preserved.
 - **Batch Translation:** Upload a CSV file and translate multiple strings simultaneously, retaining placeholder integrity.
-- **Highlighting:** Highlight cells in the output where placeholders match the original text.
+- **Highlighting:** Highlight cells in the output where placeholders do not match the original text.
+- **Self Correction:**  The below workflow has been added to ensure that placeholders are maintained.
+    - ![Self-Correcting Workflow Graph](./correction_graph.png)
 
 ## Requirements
 - Python 3.12+

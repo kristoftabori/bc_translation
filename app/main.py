@@ -1,11 +1,10 @@
 import streamlit as st
 from openai import APIConnectionError, OpenAIError
-from app.placeholder_parsing import extract_placeholders
-from app.batch_processing import translate_dataframe
+from app.batch_processing import translate_dataframe, translate_row
 import os
 from config import LANGUAGES
 from app.ui_components import show_translation_status, setup_sidebar, display_results
-from app.langchain_integrations import build_translation_chain
+from app.langchain_integrations import build_correction_chain, build_correction_graph, build_translation_chain
 import pandas as pd
 from evals import placeholder_identity
 from PIL import Image
@@ -56,18 +55,22 @@ def individual():
         try:
             with show_translation_status("Translating...") as status:
                 st.write("Extracting placeholders...")
-                placeholders = extract_placeholders(txt)
                 st.write("Translate to languages...")
                 translation_chain = build_translation_chain(st.session_state.openai_model_name)
+                correction_chain = build_correction_chain(st.session_state.openai_model_name)
+                processing_graph = build_correction_graph()
 
                 results = []
                 for language in languages:
                     st.write(f"Translation into {language} in progress...")
-                    result = translation_chain.invoke(dict(
-                        source_text=txt,
-                        language=language,
-                        placeholders=placeholders
-                    ))
+                    result = translate_row(
+                        txt,
+                        language,
+                        translation_chain,
+                        correction_chain,
+                        processing_graph
+                    )
+                    assert len(result) > 1
                     results.append(result)
 
                 display_results(results)
@@ -122,6 +125,8 @@ def batch():
             with show_translation_status("Translating...") as batch_status:
                 st.write("Translate to languages...")
                 translation_chain = build_translation_chain(st.session_state.openai_model_name)
+                correction_chain = build_correction_chain(st.session_state.openai_model_name)
+                processing_graph = build_correction_graph()
                 uploaded_df = pd.read_csv(uploaded_file, header=None)
                 results = []
                 for language in batch_languages:
@@ -129,7 +134,9 @@ def batch():
                     result = translate_dataframe(
                         uploaded_df,
                         [language],
-                        translation_chain
+                        translation_chain,
+                        correction_chain,
+                        processing_graph
                     )
                     results.append(result[language])
                 st.write("stitching together final DataFrame...")
