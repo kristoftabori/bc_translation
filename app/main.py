@@ -58,7 +58,7 @@ def individual():
                 st.write("Translate to languages...")
                 translation_chain = build_translation_chain(st.session_state.openai_model_name)
                 correction_chain = build_correction_chain(st.session_state.openai_model_name)
-                processing_graph = build_correction_graph()
+                processing_graph = build_correction_graph(st.session_state.MAX_CORRECTION_ITERATION)
 
                 results = []
                 for language in languages:
@@ -126,7 +126,7 @@ def batch():
                 st.write("Translate to languages...")
                 translation_chain = build_translation_chain(st.session_state.openai_model_name)
                 correction_chain = build_correction_chain(st.session_state.openai_model_name)
-                processing_graph = build_correction_graph()
+                processing_graph = build_correction_graph(st.session_state.MAX_CORRECTION_ITERATION)
                 uploaded_df = pd.read_csv(uploaded_file, header=None)
                 results = []
                 for language in batch_languages:
@@ -169,9 +169,16 @@ def main():
         "This app will translate the text in the textbox "
         "to the target languages respecting and not touching the placeholders."
     )
-    setup_sidebar()
+    _, _, max_correction_runs = setup_sidebar()
     os.environ["OPENAI_API_KEY"] = st.session_state.openai_api_key
     individual_tab, batch_tab = st.tabs(["Interactive", "CSV"])
+
+    if "MAX_CORRECTION_ITERATION" not in st.session_state:
+        st.session_state["MAX_CORRECTION_ITERATION"] = max_correction_runs
+
+    if max_correction_runs != st.session_state["MAX_CORRECTION_ITERATION"]:
+        st.session_state["MAX_CORRECTION_ITERATION"] = max_correction_runs
+
     with individual_tab:
         individual()
     with batch_tab:
