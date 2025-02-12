@@ -5,10 +5,10 @@ from app.langchain_integrations import (
     build_translation_chain,
     build_correction_chain,
     initial_translate,
-    are_placeholders_maintained,
     correct_mistake,
     build_correction_graph,
     TranslationState,
+    placeholders_maintained_iteration,
 )
 
 
@@ -72,17 +72,35 @@ def test_initial_translate(mock_state):
     assert new_state["translations"][0] == "Ceci est un test [placeholder1] et [placeholder2]."
 
 
-def test_are_placeholders_maintained(mock_state):
-    mock_state["translations"] = ["Ceci est un test [placeholder1] et [placeholder2]."]
-    result = are_placeholders_maintained(mock_state)
+def test_placeholders_maintained_iteration():
+    # Create the function with max_iteration of 3
+    are_placeholders_maintained = placeholders_maintained_iteration(max_iteration=3)
+
+    # Test case 1: All placeholders maintained
+    state = {
+        "translations": ["Ceci est un test [placeholder1] et [placeholder2]."],
+        "placeholders": ["placeholder1", "placeholder2"],
+        "iteration_count": 0
+    }
+    result = are_placeholders_maintained(state)
     assert result == "placeholder maintained"
 
-    mock_state["translations"] = ["Ceci est un test [placeholder1]."]
-    result = are_placeholders_maintained(mock_state)
+    # Test case 2: Missing placeholder
+    state = {
+        "translations": ["Ceci est un test [placeholder1]."],
+        "placeholders": ["placeholder1", "placeholder2"],
+        "iteration_count": 0
+    }
+    result = are_placeholders_maintained(state)
     assert result == "problem with placeholders"
 
-    mock_state["iteration_count"] = 10
-    result = are_placeholders_maintained(mock_state)
+    # Test case 3: Too many iterations
+    state = {
+        "translations": ["Ceci est un test [placeholder1]."],
+        "placeholders": ["placeholder1", "placeholder2"],
+        "iteration_count": 4
+    }
+    result = are_placeholders_maintained(state)
     assert result == "too many iterations"
 
 
@@ -100,7 +118,7 @@ def test_correction_graph(mock_state):
     mock_state["translation_chain"].invoke.return_value = "Ceci est un test [placeholder1]."
     mock_state["correction_chain"].invoke.return_value = "Ceci est un test [placeholder1] et [placeholder2]."
 
-    graph = build_correction_graph()
+    graph = build_correction_graph(max_iteration=3)
     final_state = graph.invoke(mock_state)
 
     assert "translations" in final_state
@@ -113,5 +131,5 @@ def test_correction_graph(mock_state):
 
 
 def test_build_correction_graph():
-    graph = build_correction_graph()
+    graph = build_correction_graph(max_iteration=3)
     assert graph is not None

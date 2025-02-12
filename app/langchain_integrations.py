@@ -1,10 +1,10 @@
-from app.config import PROMPT_TEMPLATE_LOCATION, CORRECTION_PROMPT_TEMPLATE_LOCATION, MAX_CORRECTION_ITERATION
+from app.config import PROMPT_TEMPLATE_LOCATION, CORRECTION_PROMPT_TEMPLATE_LOCATION
 from app.placeholder_parsing import extract_placeholders
 from langchain_core.runnables import RunnableSerializable
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from typing import TypedDict, Annotated, List
+from typing import TypedDict, Annotated, List, Callable
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from operator import add
@@ -63,17 +63,20 @@ def initial_translate(state: TranslationState) -> dict:
     }
 
 
-def are_placeholders_maintained(state: TranslationState) -> str:
-    assert "translations" in state
-    assert len(state["translations"]) > 0
+def placeholders_maintained_iteration(max_iteration: int) -> Callable[[TranslationState], str]:
+    def are_placeholders_maintained(state: TranslationState) -> str:
+        assert "translations" in state
+        assert len(state["translations"]) > 0
 
-    new_placeholders = extract_placeholders(state["translations"][-1])
+        new_placeholders = extract_placeholders(state["translations"][-1])
 
-    if set(state["placeholders"]) == set(new_placeholders):
-        return "placeholder maintained"
-    if state["iteration_count"] > MAX_CORRECTION_ITERATION:
-        return "too many iterations"
-    return "problem with placeholders"
+        if set(state["placeholders"]) == set(new_placeholders):
+            return "placeholder maintained"
+        if state["iteration_count"] > max_iteration:
+            return "too many iterations"
+        return "problem with placeholders"
+
+    return are_placeholders_maintained
 
 
 def correct_mistake(state: TranslationState) -> dict:
@@ -93,7 +96,7 @@ def correct_mistake(state: TranslationState) -> dict:
     }
 
 
-def build_correction_graph() -> CompiledStateGraph:
+def build_correction_graph(max_iteration: int) -> CompiledStateGraph:
     workflow = StateGraph(TranslationState)
 
     workflow.add_node("initial_translate", initial_translate)
@@ -102,7 +105,7 @@ def build_correction_graph() -> CompiledStateGraph:
     workflow.set_entry_point("initial_translate")
     workflow.add_conditional_edges(
         "initial_translate",
-        are_placeholders_maintained,
+        placeholders_maintained_iteration(max_iteration),
         {
             "placeholder maintained": END,
             "too many iterations": END,
@@ -111,7 +114,7 @@ def build_correction_graph() -> CompiledStateGraph:
     )
     workflow.add_conditional_edges(
         "correct_mistake",
-        are_placeholders_maintained,
+        placeholders_maintained_iteration(max_iteration),
         {
             "placeholder maintained": END,
             "too many iterations": END,
